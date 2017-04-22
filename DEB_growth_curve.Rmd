@@ -1,0 +1,81 @@
+---
+title: "Ontogenetic growth with DEB in R"
+author: "James Maino"
+date: "22 April 2017"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(deSolve)
+```
+
+
+```{r}
+# initial vars
+V0 = 0.01
+
+# set parameters
+p_Am =  10 
+E_G   = 28
+v     = 0.02
+p_M   = 18
+f     = 0.5
+```
+
+# initialise state variables
+```{r}
+state <- c(res = f*p_Am/v*V0,
+           V   = V0)
+```
+
+# integration time points
+```{r}
+times <- seq(0,10000,length = 1000)
+```
+
+# function containing ODEs
+```{r}
+growth<-function(t, state, pars) {
+  # parameters
+  p_Am= pars[1]
+  E_G = pars[2]
+  v   = pars[3]
+  p_M = pars[4]
+  f   = pars[5]
+  
+  
+  # state variables
+  res = state[1]
+  V   = state[2]
+  
+  # rate of change
+  dres = f*p_Am*V^(2/3) - res* (E_G*v/V^(1/3) + p_M)/(res/V + E_G);
+  dV   = (res*v/V^(1/3) - p_M*V)/(res/V + E_G);
+  
+  # return the rate of change
+  list(c(dres, dV))
+}
+```
+
+# wrap parameters
+```{r}
+pars       <- c(p_Am  = p_Am,
+                E_G   = E_G,
+                v     = v,
+                p_M   = p_M,
+                f     = f)
+```
+
+### solve ODEs
+```{r}
+resV <- ode(y = state, times = times, func = growth, parms = pars, atol = 1e-6, rtol = 1e-6)
+
+```
+
+# plot results
+```{r}
+plot(times, resV[,3], )
+```
+
