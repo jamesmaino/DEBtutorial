@@ -1,59 +1,100 @@
 ---
 title: "Ontogenetic growth with DEB in R"
 author: "James Maino"
-date: "22 April 2017"
+date: "26 April 2017"
 output: html_document
 runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(deSolve)
+library(ggplot2)
+# library(shiny)
+resV2<-data.frame(time=numeric(),res=numeric(),V=numeric())
 ```
 
-This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
-
-To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
-
-## Inputs and Outputs
-
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
 
 ```{r eruptions, echo=FALSE}
 inputPanel(
-  selectInput("n_breaks", label = "Number of bins:",
-              choices = c(10, 20, 35, 50), selected = 20),
+  # initial vars
+  sliderInput("V0", label = "V0: initial V, cm^3:",
+              min = 0.0001, max = 0.2, value = 0.01),
+  sliderInput("p_Am", label = "p_Am: assim. rate, J/cm^2/d:",
+              min = 1, max = 10, value = 10, step = 0.1),
+  sliderInput("E_G", label = "E_G: cost of growth, J/cm^3:",
+              min = 1, max = 1000, value = 28, step = 1)
+)
+inputPanel(
+  sliderInput("v", label = "v: conductance, cm/d:",
+              min = 0.0001, max = 0.2, value = 0.02, step = 0.001),
+  sliderInput("p_M", label = " p_M: maintenance rate, J/cm^3/d:",
+              min = 0.0001, max = 20, value = 16, step = 0.2),
+  sliderInput("f", label = "f: feeding response, -",
+              min = 0, max = 1, value = 0.95, step = 0.01)
   
-  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
-              min = 0.2, max = 2, value = 1, step = 0.2)
 )
 
 renderPlot({
-  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
-       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+
+# initial vars
+V0 = input$V0 # intial structure, cm^3
+
+# set parameters
+p_Am =  input$p_Am  # SA specific assimilation rate, J/cm^2/d
+E_G   = input$E_G   # cost of growth, J/cm^3
+v     = input$v     # conductance, cm/d
+p_M   = input$p_M   # vol. specific maintenance rate, J/cm^3/d
+f     = input$f     # scaled functional response of feeding, -  
+state <- c(res = f*p_Am/v*V0,
+           V   = V0)
+
+# solve time until 99% of ultimate length
+L_inf = p_Am/p_M
+L0<-V0^(1/3)
+a<-1/(3/p_M/E_G + 3*L_inf/v)
+t_inf<-1/a * log((L_inf-L0)/(L_inf-0.99*L_inf))
+
+times <- seq(0,1000,length = 1000)
+
+growth<-function(t, state, pars) {
+  # parameters
+  p_Am= pars[1]
+  E_G = pars[2]
+  v   = pars[3]
+  p_M = pars[4]
+  f   = pars[5]
   
-  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-  lines(dens, col = "blue")
+  
+  # state variables
+  res = state[1]
+  V   = state[2]
+  
+  # rate of change
+  dres = f*p_Am*V^(2/3) - res* (E_G*v/V^(1/3) + p_M)/(res/V + E_G);
+  dV   = (res*v/V^(1/3) - p_M*V)/(res/V + E_G);
+  
+  # return the rate of change
+  list(c(dres, dV))
+}
+
+
+pars       <- c(p_Am  = p_Am,
+                E_G   = E_G,
+                v     = v,
+                p_M   = p_M,
+                f = f)
+resV <- as.data.frame(ode(y = state, times = times, func = growth, parms = pars))
+
+
+p<-ggplot()+
+  geom_line(data=resV, aes(time,V))+
+  geom_line(data=resV2,aes(time,V), color = 'red', alpha = 0.5)+
+  ylim(0,1)+
+  xlim(0,1000)+
+  theme_classic()
+print(p)
+resV2<<-resV
 })
 ```
-
-## Embedded Application
-
-It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
-
-```{r tabsets, echo=FALSE}
-shinyAppDir(
-  system.file("examples/06_tabsets", package = "shiny"),
-  options = list(
-    width = "100%", height = 550
-  )
-)
-```
-
-Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
-
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
-
-In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
-
-
 
