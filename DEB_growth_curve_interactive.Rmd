@@ -65,7 +65,6 @@ growth<-function(t, state, pars) {
   p_M = pars[4]
   f   = pars[5]
   
-  
   # state variables
   res = state[1]
   V   = state[2]

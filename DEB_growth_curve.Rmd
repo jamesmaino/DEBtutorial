@@ -2,7 +2,9 @@
 title: "A gentle intro to DEB theory and ontogenetic growth with ODEs in R"
 author: "James Maino"
 date: "22 April 2017"
-output: html_document
+output:
+  html_document: default
+  word_document: default
 ---
 
 
@@ -11,7 +13,22 @@ knitr::opts_chunk$set(echo = TRUE)
 library(deSolve)
 ```
 
-What I want to do in the following is introduce some basic Dynamic Energy Budget (DEB) growth equations in the form of ordinary differential equations (ODEs). First, we set values for some of the core DEB parameters, which we have hopefully discussed. If not, do so now...
+# Background
+What I want to do in the following is introduce Dynamic Energy Budget (DEB) theory, what it does, and how it may be useful in ecology. After that, we will set up some basic DEB growth equations in the form of ordinary differential equations (ODEs). 
+
+But firstly, why are individual energy budgets important.... let alone dynamic ones?
+
+Conservation of energy (and mass) constrains all life processes from the molecular to the ecosystem. Identifying further constraints on the flow of energy through ecosystems has ramifications across all fields of biology. Ingregration accross different levels of biological organisation (which span vast scales of space and time) is one of the grand challenges in the life sciences. Energy - viewed as a universal currency of life processes - may offer a way forward here. A focus on the energy budgets of individuals is of particular interest because at this level of organisational complexity it is relatively easy to make energy and mass balances (compared with the sub- and supra-individual levels). Individuals are also the units of selection, and the survival machines of life.
+
+DEB theory's creator, Bas Kooijman, describes it as the following:
+
+>"The Dynamic Energy Budget (DEB) theory unifies the commonalities between organisms as prescribed by the implications of energetics, which links different levels of biological organisation (cells, organisms and populations). The theory presents simple mechanistic rules that describe the uptake and use of energy and nutrients (substrates, food, light) and the consequences for physiological organisation throughout an organism's life cycle, including the relationships of energetics with aging and effects of toxicants. All living organisms are covered in a single quantitative framework, the predictions of which are tested against a wide variety of experimental results at the various levels of biological organisation. The theory explains many general observations, such as the body size scaling relationships of certain physiological traits, and provides a theoretical underpinning to the widely used method of indirect calorimetry."  [http://www.bio.vu.nl/thb/deb/index.html]
+
+So what are these "commonalities between organisms as prescribed by the implications of energetics"?
+
+![A simplified energy allocation scheme (ignoring maturation and reproduction)](allocation.png)
+
+Let's do some DEB theory! First, we set values for some of the core DEB parameters, which we have hopefully discussed. If not, do so now...
 
 ```{r}
 # initial vars
@@ -40,29 +57,29 @@ The return value of func should be a list, whose first element is a vector conta
 
 ### 1. Initialise state variables
 ```{r}
-state <- c(res = f*p_Am/v*V0,
-           V   = V0)
+state <- c(res = f*p_Am/v*V0, # initial reserve, J
+           V   = V0)          # initial structure, cm^3
 ```
 
 ### 2. Set integration time points
 ```{r}
-times <- seq(0,5000,length = 1000)
+times <- seq(0,5000,length = 1000) # time, d
 ```
 
 ### 3. Create function containing ODEs
 ```{r}
 growth<-function(t, state, pars) {
   # parameters
-  p_Am= pars[1]
-  E_G = pars[2]
-  v   = pars[3]
-  p_M = pars[4]
-  f   = pars[5]
-  
+  p_Am= pars[1] # SA specific assimilation rate, J/cm^2/d
+  E_G = pars[2] # cost of growth, J/cm^3
+  v   = pars[3] # conductance, cm/d
+  p_M = pars[4] # vol. specific maintenance rate, J/cm^3/d
+  f   = pars[5] # scaled functional response of feeding, -
+   
   
   # state variables
-  res = state[1]
-  V   = state[2]
+  res = state[1] # reserve, J
+  V   = state[2] # structure, cm^3
   
   # rate of change
   dres = f*p_Am*V^(2/3) - res* (E_G*v/V^(1/3) + p_M)/(res/V + E_G);
@@ -75,11 +92,11 @@ growth<-function(t, state, pars) {
 
 ### 4. Wrap parameters to pass to function
 ```{r}
-pars       <- c(p_Am  = p_Am,
-                E_G   = E_G,
-                v     = v,
-                p_M   = p_M,
-                f     = f)
+pars       <- c(p_Am  = p_Am, # SA specific assimilation rate, J/cm^2/d
+                E_G   = E_G,  # cost of growth, J/cm^3
+                v     = v,    # conductance, cm/d
+                p_M   = p_M,  # vol. specific maintenance rate, J/cm^3/d
+                f     = f)    # scaled functional response of feeding, -
 ```
 
 ## Solve ODEs
